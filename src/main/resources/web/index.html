@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParcellQ - University Parcel & Shelter Management</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="navbar">
+    <div class="brand-container">
+      <span class="brand-icon">📦</span>
+      <span class="brand-name">ParcellQ</span>
+      <span class="brand-tag">Shelter Logistics</span>
+    </div>
+    <div id="authStatus" class="auth-status hidden">
+      <span id="roleIndicator" class="role-badge"></span>
+      <button class="btn-logout" onclick="logout()">Exit Portal</button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="main-wrapper">
+
+    <!-- 1) LANDING VIEW: GREETED WITH 3 OPTIONS -->
+    <section id="landingView" class="view-section active">
+      <div class="hero-header">
+        <h1>Welcome to ParcellQ</h1>
+        <p>Select your portal to continue:</p>
+      </div>
+
+      <div class="portal-grid">
+        <!-- i) Login as Student -->
+        <div class="portal-card" onclick="openStudentLoginModal()">
+          <div class="portal-icon">🎓</div>
+          <h2>Login as Student</h2>
+          <p>Login with your name, password, and roll no to view your unique arrival tickets.</p>
+          <button class="portal-btn">Select Student Portal</button>
+        </div>
+
+        <!-- ii) Login as Guard -->
+        <div class="portal-card" onclick="openGuardLoginModal()">
+          <div class="portal-icon">🛡️</div>
+          <h2>Login as Guard</h2>
+          <p>Login with your auto-generated Guard Roll No ID assigned to you by the Admin.</p>
+          <button class="portal-btn">Select Guard Portal</button>
+        </div>
+
+        <!-- iii) Login as Admin -->
+        <div class="portal-card" onclick="openAdminLoginModal()">
+          <div class="portal-icon">⚙️</div>
+          <h2>Login as Admin</h2>
+          <p>Assign guards to 3-hour shifts and generate their unique Guard Roll No login IDs.</p>
+          <button class="portal-btn">Select Admin Portal</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2) ADMIN VIEW: ASSIGN GUARDS IN SHIFTS (3-HOUR SLOTS) -->
+    <section id="adminView" class="view-section hidden">
+      <div class="view-header">
+        <h2>Admin Shelter Roster Management</h2>
+        <p>Assign guards at pickup & drop shelter in 3-hour shifts with their phone numbers and auto-generate their Guard Roll No ID.</p>
+      </div>
+
+      <div class="admin-layout">
+        <!-- Assign Shift Form -->
+        <div class="content-box">
+          <h3>Assign Guard at Shelter</h3>
+          <form id="assignShiftForm" onsubmit="submitGuardShift(event)">
+            <div class="form-field">
+              <label for="guardInputName">Guard Full Name:</label>
+              <input type="text" id="guardInputName" required placeholder="e.g., Ramesh Singh" />
+            </div>
+            <div class="form-field">
+              <label for="guardInputPhone">Phone Number:</label>
+              <input type="tel" id="guardInputPhone" required placeholder="e.g., +91 98765 43210" />
+            </div>
+            <div class="form-field">
+              <label for="shiftSlotSelect">3-Hour Shift Slot:</label>
+              <select id="shiftSlotSelect" required>
+                <option value="06:00 - 09:00">06:00 AM - 09:00 AM (Morning Shift)</option>
+                <option value="09:00 - 12:00">09:00 AM - 12:00 PM (Forenoon Shift)</option>
+                <option value="12:00 - 15:00">12:00 PM - 03:00 PM (Afternoon Shift)</option>
+                <option value="15:00 - 18:00">03:00 PM - 06:00 PM (Evening Shift)</option>
+                <option value="18:00 - 21:00">06:00 PM - 09:00 PM (Night Shift 1)</option>
+                <option value="21:00 - 24:00">09:00 PM - 12:00 AM (Night Shift 2)</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="shelterLocationInput">Pickup & Drop Shelter Point:</label>
+              <input type="text" id="shelterLocationInput" value="Campus Main Shelter (North Gate)" required />
+            </div>
+            <button type="submit" class="btn-action-primary">Assign Shift & Auto-Generate Guard Roll No</button>
+          </form>
+        </div>
+
+        <!-- Assigned Guards Table beside -->
+        <div class="content-box">
+          <h3>Shelter Duty Roster (Pickup & Drop)</h3>
+          <div class="table-container">
+            <table class="styled-table">
+              <thead>
+                <tr>
+                  <th>Guard Roll No (ID)</th>
+                  <th>Guard Name</th>
+                  <th>Phone Number</th>
+                  <th>3-Hour Shift</th>
+                  <th>Shelter Point</th>
+                </tr>
+              </thead>
+              <tbody id="guardRosterTbody">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 & 4) GUARD VIEW: DROP & PICK UP OPTIONS -->
+    <section id="guardView" class="view-section hidden">
+      <div class="view-header">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+          <div>
+            <h2>Guard Shelter Station</h2>
+            <p id="guardDutyInfo" style="color:#0284c7; font-weight:600;"></p>
+          </div>
+          <div class="option-tabs">
+            <button id="tabDropBtn" class="tab-button active" onclick="showGuardTab('DROP')">📦 Drop Option</button>
+            <button id="tabPickupBtn" class="tab-button" onclick="showGuardTab('PICKUP')">🔑 Pick-Up Option</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DROP OPTION -->
+      <div id="guardDropSection" class="tab-content">
+        <div class="content-box">
+          <h3>Incoming Parcel Drop</h3>
+          <p class="helper-text">Creating a drop ticket auto-assigns a random shelf number between 1–150 and immediately notifies the specific student with an OTP.</p>
+          
+          <form id="guardDropForm" onsubmit="submitGuardDrop(event)">
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="dropSrNo">Sr. No (Auto-Generated):</label>
+                <input type="text" id="dropSrNo" readonly class="input-readonly" />
+              </div>
+              <div class="form-field">
+                <label for="dropStudentRollNo">Student's Roll No (Reg No):</label>
+                <input type="text" id="dropStudentRollNo" required placeholder="e.g. 23BCS1088" oninput="autoFillStudentName()" list="registeredStudentsList" />
+                <datalist id="registeredStudentsList"></datalist>
+              </div>
+              <div class="form-field">
+                <label for="dropStudentName">Student's Full Name:</label>
+                <input type="text" id="dropStudentName" required placeholder="e.g. Aryan Sharma" />
+              </div>
+              <div class="form-field">
+                <label for="dropDeliveryFrom">Delivery From:</label>
+                <input type="text" id="dropDeliveryFrom" required placeholder="e.g. Amazon, Flipkart, Zomato, Swiggy, Myntra, BlueDart" />
+              </div>
+              <div class="form-field">
+                <label for="dropArrivedAt">Arrived At:</label>
+                <input type="text" id="dropArrivedAt" readonly class="input-readonly" />
+              </div>
+              <div class="form-field">
+                <label for="dropPickedUpAt">Picked Up At:</label>
+                <input type="text" id="dropPickedUpAt" value="-- (Blank until picked up) --" readonly class="input-readonly input-blank" />
+              </div>
+            </div>
+            <button type="submit" class="btn-action-primary mt-1">Create Drop Ticket (Auto Shelf 1-150)</button>
+          </form>
+        </div>
+
+        <!-- Stacked Dropped Orders Table -->
+        <div class="content-box mt-2">
+          <h3>Dropped Parcels at Shelter (Multiple Stacked Drops)</h3>
+          <div class="table-container">
+            <table class="styled-table">
+              <thead>
+                <tr>
+                  <th>Sr No</th>
+                  <th>Student Roll No</th>
+                  <th>Student's Name</th>
+                  <th>Delivery From</th>
+                  <th>Arrived At</th>
+                  <th>Picked Up At</th>
+                  <th>Random Shelf Space (1-150)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="guardDropsTbody">
+                <!-- Stacked list of drops -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PICK UP OPTION -->
+      <div id="guardPickupSection" class="tab-content hidden">
+        <div class="content-box">
+          <h3>Student Parcel Collection (Pick-Up Verification)</h3>
+          <p class="helper-text">Enter the OTP shared by the student to automatically filter out whose order it is and pull up the drop ticket:</p>
+          
+          <div class="search-flex">
+            <input type="text" id="filterOtpInput" maxlength="6" placeholder="Enter 6-digit OTP (e.g., 492018)" oninput="filterOrderByOtp()" />
+            <button class="btn-action-primary" onclick="filterOrderByOtp()">Filter Order</button>
+          </div>
+        </div>
+
+        <!-- Filtered Drop Ticket Display with Camera Barcode Scanner beside it -->
+        <div id="pickupTicketDetails" class="content-box mt-2 hidden">
+          <div class="ticket-header-bar">
+            <h3>Verified Drop Ticket</h3>
+            <span id="ticketBadge" class="status-badge"></span>
+          </div>
+
+          <div class="pickup-columns">
+            <!-- Left: Ticket Information -->
+            <div class="ticket-data-panel">
+              <div class="data-item"><strong>Sr No:</strong> <span id="pkSrNo"></span></div>
+              <div class="data-item"><strong>Student's Roll No:</strong> <span id="pkStudentRegNo"></span></div>
+              <div class="data-item"><strong>Student's Name:</strong> <span id="pkStudentName"></span></div>
+              <div class="data-item"><strong>Delivery From:</strong> <span id="pkDeliveryFrom"></span></div>
+              <div class="data-item"><strong>Arrived At:</strong> <span id="pkArrivedAt"></span></div>
+              <div class="data-item"><strong>Picked Up At:</strong> <span id="pkPickedUpAt"></span></div>
+              <div class="data-item"><strong>Shelf Number:</strong> <span id="pkShelfNumber" class="shelf-highlight"></span></div>
+            </div>
+
+            <!-- Right: Camera Barcode Option beside the ticket -->
+            <div class="camera-panel">
+              <div class="camera-viewfinder">
+                <div class="camera-lens">
+                  <div class="scan-laser-line"></div>
+                  <div class="barcode-preview">
+                    <span class="barcode-lines">||| | |||| | ||| || |||</span>
+                    <span id="pkBarcodeTarget" class="barcode-text">PIQ-BC-492018</span>
+                  </div>
+                </div>
+              </div>
+              <p class="camera-info">Camera recognizing specific barcode symbol only...</p>
+              <button id="btnScanBarcode" class="btn-camera" onclick="executeBarcodeCameraScan()">
+                📷 Scan Barcode & Complete Pick-Up
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5) STUDENT VIEW: IN-APP TICKETS & HELP SIGN -->
+    <section id="studentView" class="view-section hidden">
+      <div class="student-header-flex">
+        <div>
+          <h2>Student Order Notifications</h2>
+          <p id="studentWelcomeSubtext">Your personal parcel arrival notifications and pickup OTPs:</p>
+        </div>
+
+        <!-- Help sign marked with a red triangle and white rectangle -->
+        <button class="btn-help-hazard" onclick="openDisputeModal()" title="Report Fraud, Malicious Tampering, or Missing Item">
+          <span class="hazard-svg-wrap">
+            <svg width="26" height="26" viewBox="0 0 24 24">
+              <!-- Red Triangle -->
+              <polygon points="12,2 23,21 1,21" fill="#dc2626" stroke="#991b1b" stroke-width="1.5" />
+              <!-- White Rectangle -->
+              <rect x="11" y="8" width="2" height="7" fill="#ffffff" rx="1" />
+              <rect x="11" y="17" width="2" height="2" fill="#ffffff" rx="1" />
+            </svg>
+          </span>
+          <span class="help-btn-text">Raise Ticket (Help)</span>
+        </button>
+      </div>
+
+      <!-- In-app Arrival Ticket Cards -->
+      <div id="studentTicketsGrid" class="student-tickets-grid mt-2">
+        <!-- Dynamically rendered -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- STUDENT LOGIN / REGISTRATION MODAL -->
+  <div id="studentLoginModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-title-bar">
+        <h3>🎓 Student Portal Login</h3>
+        <button class="btn-modal-close" onclick="closeStudentLoginModal()">&times;</button>
+      </div>
+
+      <!-- Step 1: Login Name & Password -->
+      <form id="studentAuthForm" onsubmit="handleStudentLogin(event)">
+        <div id="studentStep1">
+          <div class="form-field">
+            <label for="stuName">Student Login Name:</label>
+            <input type="text" id="stuName" required placeholder="e.g., Aryan Sharma" />
+          </div>
+          <div class="form-field">
+            <label for="stuPassword">Password:</label>
+            <input type="password" id="stuPassword" required placeholder="Enter your password" />
+          </div>
+          <div class="dialog-actions">
+            <button type="submit" class="btn-action-primary">Sign In / Continue</button>
+            <button type="button" class="btn-action-secondary" onclick="closeStudentLoginModal()">Cancel</button>
+          </div>
+          <div style="margin-top: 1rem; text-align: center;">
+            <a href="javascript:void(0)" onclick="openResetPasswordStep()" style="color: #2563eb; font-size: 0.85rem; text-decoration: none;">
+              Forgot password or first time after guard drop? Reset / Set with Roll No
+            </a>
+          </div>
+        </div>
+
+        <!-- Step 2: Pop out for Roll No (for new student registration) -->
+        <div id="studentStep2" class="hidden">
+          <div class="popout-banner">
+            <strong>👋 Welcome, <span id="popoutStudentName"></span>!</strong>
+            <p>Please enter your University Roll No. to create your permanent account in the database:</p>
+          </div>
+          <div class="form-field mt-1">
+            <label for="stuRollNo">University Roll No (Reg No):</label>
+            <input type="text" id="stuRollNo" placeholder="e.g. 23BCS1088" />
+          </div>
+          <div class="dialog-actions">
+            <button type="button" class="btn-action-primary" onclick="handleStudentRegister()">Save & Enter Portal</button>
+            <button type="button" class="btn-action-secondary" onclick="backToStudentStep1()">Back</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Reset / Set Password with Roll No -->
+        <div id="studentStep3" class="hidden">
+          <div class="popout-banner">
+            <strong>🔑 Set / Reset Password with Roll No</strong>
+            <p>Enter your University Roll No and your desired new password:</p>
+          </div>
+          <div class="form-field mt-1">
+            <label for="resetStuRollNo">University Roll No:</label>
+            <input type="text" id="resetStuRollNo" placeholder="e.g. 2502051989" />
+          </div>
+          <div class="form-field">
+            <label for="resetNewPassword">New Password:</label>
+            <input type="password" id="resetNewPassword" placeholder="Enter your new password" />
+          </div>
+          <div class="dialog-actions">
+            <button type="button" class="btn-action-primary" onclick="handleStudentResetPassword()">Update & Enter Portal</button>
+            <button type="button" class="btn-action-secondary" onclick="backToStudentStep1()">Back</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN MODAL -->
+  <div id="adminLoginModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-title-bar">
+        <h3>⚙️ Admin Portal Login</h3>
+        <button class="btn-modal-close" onclick="closeAdminLoginModal()">&times;</button>
+      </div>
+      <form id="adminAuthForm" onsubmit="handleAdminLogin(event)">
+        <div class="form-field">
+          <label for="adminUsername">Login Name:</label>
+          <input type="text" id="adminUsername" required value="admin" />
+        </div>
+        <div class="form-field">
+          <label for="adminPassword">Password:</label>
+          <input type="password" id="adminPassword" required placeholder="admin123" />
+        </div>
+        <div class="dialog-actions">
+          <button type="submit" class="btn-action-primary">Login as Admin</button>
+          <button type="button" class="btn-action-secondary" onclick="closeAdminLoginModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- GUARD LOGIN MODAL -->
+  <div id="guardLoginModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-title-bar">
+        <h3>🛡️ Guard Shelter Station Login</h3>
+        <button class="btn-modal-close" onclick="closeGuardLoginModal()">&times;</button>
+      </div>
+      <form id="guardAuthForm" onsubmit="handleGuardLogin(event)">
+        <p class="helper-text">Enter your unique <strong>Guard Roll No ID</strong> assigned to you by the Admin:</p>
+        <div class="form-field">
+          <label for="guardRollNoInput">Auto-Generated Guard Roll No:</label>
+          <input type="text" id="guardRollNoInput" required placeholder="e.g., GRD-1001" />
+        </div>
+        <div class="dialog-actions">
+          <button type="submit" class="btn-action-primary">Verify & Enter</button>
+          <button type="button" class="btn-action-secondary" onclick="closeGuardLoginModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- HELP SIGN / DISPUTE MODAL -->
+  <div id="disputeModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-title-bar">
+        <div class="modal-title-left">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <polygon points="12,2 23,21 1,21" fill="#dc2626" />
+            <rect x="11" y="8" width="2" height="7" fill="#ffffff" rx="1" />
+            <rect x="11" y="17" width="2" height="2" fill="#ffffff" rx="1" />
+          </svg>
+          <h3>Raise Security / Quality Ticket</h3>
+        </div>
+        <button class="btn-modal-close" onclick="closeDisputeModal()">&times;</button>
+      </div>
+
+      <form id="disputeForm" onsubmit="submitDispute(event)">
+        <div class="form-field">
+          <label for="disputeParcelSelect">Select Order / Parcel:</label>
+          <select id="disputeParcelSelect" required></select>
+        </div>
+
+        <div class="form-field">
+          <label for="disputeIssueType">Incident Category:</label>
+          <select id="disputeIssueType" required>
+            <option value="FRAUD">Fraudulent Order / Incorrect Item</option>
+            <option value="MALICIOUS_TAMPERING">Malicious Tampering / Damaged Seal</option>
+            <option value="MISSING_ITEM">Missing Item from Order</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="disputeComments">Incident Details:</label>
+          <textarea id="disputeComments" rows="4" required placeholder="Describe the issue in detail for campus security investigation..."></textarea>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="submit" class="btn-danger">Submit Ticket</button>
+          <button type="button" class="btn-action-secondary" onclick="closeDisputeModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
